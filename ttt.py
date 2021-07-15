@@ -1,3 +1,4 @@
+#! /usr/bin/env python3
 from copy import deepcopy
 import subprocess
 import random
