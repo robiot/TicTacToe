@@ -92,7 +92,7 @@ class MainGame:
     def coordsToIndexex(self, coords: str) -> tuple:
         return (int(coords[1])-1, "ABC".find(coords[0]))
 
-    """ Change Value Of Given Coords To The Currents Players Mark """
+    """ Change Value Of Given Coords To The Current Players Mark """
     def makeMove(self, indexes: tuple):
         if self.board[indexes[0]][indexes[1]] != self.emptyChar:
             raise PositionInUse
@@ -128,6 +128,7 @@ class MainGame:
         if (1,1) in possibleMoves:
             return (1,1)
 
+        # Take edges
         openEdges = []
         for move in possibleMoves:
             if move in ((0,1),(1,0),(1,2),(2,1)):
