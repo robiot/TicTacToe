@@ -1,29 +1,40 @@
+from copy import deepcopy
+import subprocess
 import random
-import os, sys
 
 """ Custom Errors """
 class PositionInUse(Exception):
     pass
 
+""" Stats Object """
+class Stats:
+    player1_score: int = 0
+    player2_score: int = 0
+    tie: int = 0
+
 """ Main Game Class """
 class MainGame:
     """ Initialize Self Variables """
     def __init__(self):
+        self.emptyChar = "#"
         self.board  = [
-            ["#", "#", "#"],
-            ["#", "#", "#"],
-            ["#", "#", "#"]
+            [self.emptyChar, self.emptyChar, self.emptyChar],
+            [self.emptyChar, self.emptyChar, self.emptyChar],
+            [self.emptyChar, self.emptyChar, self.emptyChar]
         ]
         self.players = (("Player1", "X"), ("Player2", "O"))
         self.startPlayer = random.choice(self.players)
         self.currentPlayer = None
         self.winningCombos = self.generateWinningCombos()
         self.errors = []
+    
+    """ Clears The Terminal """
+    def clear(self):
+        subprocess.call("cls||clear", shell=True)
 
     """ Print The Gameboard From self.board """
     def printBoard(self):
-        os.system('cls||clear')
-        
+        self.clear()
         print("\n  A  |  B  |  C  \n")
         print("     |     |")
 
@@ -59,14 +70,18 @@ class MainGame:
 
         return combos
 
-    """ Checks If The Current Player Won """
-    def isWinner(self) -> bool:
-        getBoard = lambda index: self.board[combo[index][0]][combo[index][1]]
+    """ Checks If Given Mark Won """
+    def isWinner(self, board: list, mark: str) -> bool:
+        getBoard = lambda index: board[combo[index][0]][combo[index][1]]
         for combo in self.winningCombos:
-            if (getBoard(0) == getBoard(1) == getBoard(2) == self.currentPlayer[1]):
+            if (getBoard(0) == getBoard(1) == getBoard(2) == mark):
                 return True
-        
         return False
+
+    """ Checks If The Board Is Full """
+    def isBoardFull(self) -> bool:
+        items = lambda index: self.board[index].count(self.emptyChar) == 0
+        return True if items(0) and items(1) and items(2) else False
 
     """ Gets The Next Player From The Self.players List """
     def getNextPlayer(self) -> tuple:
@@ -78,12 +93,62 @@ class MainGame:
         return (int(coords[1])-1, "ABC".find(coords[0]))
 
     """ Change Value Of Given Coords To The Currents Players Mark """
-    def makeMove(self, coords: str):
-        indexes = self.coordsToIndexex(coords)
-        if self.board[indexes[0]][indexes[1]] != "#":
+    def makeMove(self, indexes: tuple):
+        if self.board[indexes[0]][indexes[1]] != self.emptyChar:
             raise PositionInUse
         self.board[indexes[0]][indexes[1]] = self.currentPlayer[1]
 
+    """ Computer Move """
+    def compMove(self):
+        possibleMoves = []
+        for rowIndex in range(len(self.board)):
+            for itemIndex in range(len(self.board[rowIndex])):
+                item = self.board[rowIndex][itemIndex]
+                if item == self.emptyChar:
+                    possibleMoves.append((rowIndex, itemIndex))
+
+        # Firstly checks if it can win or block
+        for player in self.players[::-1]: # reverse list so it checks if it can win first
+           for move in possibleMoves:
+               boardCopy = deepcopy(self.board)
+               boardCopy[move[0]][move[1]] = player[1]
+               
+               if self.isWinner(boardCopy, player[1]):
+                   return move
+
+        # Take corners
+        openCorners = []
+        for move in possibleMoves:
+            if move in ((0,0),(0,2),(2,0),(2,2)):
+                openCorners.append(move)
+        if len(openCorners) > 0:
+            return random.choice(openCorners)
+
+        # If middle is available
+        if (1,1) in possibleMoves:
+            return (1,1)
+
+        openEdges = []
+        for move in possibleMoves:
+            if move in ((0,1),(1,0),(1,2),(2,1)):
+                openEdges.append(move)
+                
+        if len(openEdges) > 0:
+            return random.choice(openEdges)
+
+    """ Get User Input """
+    def getInput(self):
+        return input(f"{self.currentPlayer[0]} ({self.currentPlayer[1]}) > ").upper()
+
+    def addStats(self, action: str):
+        if action == "win":
+            if self.currentPlayer[0] == "Player1":
+                Stats.player1_score += 1
+            elif self.currentPlayer[0] == "Player2":
+                Stats.player2_score += 1
+        elif action == "tie":
+            Stats.tie += 1
+        
     """ Asks If User Wants To Play Again """
     def done(self, text: str):
         self.printBoard()
@@ -91,45 +156,68 @@ class MainGame:
 
         playAgain= input("Do you want to play agan? (Y/n) > ")
         if playAgain == "n":
-            sys.exit(0)
+            return
         else:
             self.run()
         
 
     """ Main Gameloop """
     def gameloop(self):
+        self.clear()
+        print((
+                "  _____ _        _____            _____          \n"
+                " |_   _(_) ___  |_   _|_ _  ___  |_   _|__   ___ \n"
+                "   | | | |/ __|   | |/ _` |/ __|   | |/ _ \ / _ \ \n"
+                "   | | | | (__    | | (_| | (__    | | (_) |  __/\n"
+                "   |_| |_|\___|   |_|\__,_|\___|   |_|\___/ \___|\n\n"
+               f"    Player1 Score: {Stats.player1_score}   Tie: {Stats.tie}   Player2 Score: {Stats.player2_score} \n\n"
+        ))
+
+        print((
+            "[0] Player vs Player\n"
+            "[1] Player vs Computer\n"
+            "[2] Exit"
+        ))
+
+        gamemode = input("Option > ")
+        if gamemode == "2":
+            return
+        if gamemode not in ["0", "1"]:
+            return print("Invalid option!")
+
         while 1:
             self.printBoard()
             self.errors.clear()
             self.currentPlayer = self.startPlayer if not self.currentPlayer else self.currentPlayer
-            coords = input(f"{self.currentPlayer[0]} ({self.currentPlayer[1]}) > ").upper()
 
-            if coords == "EXIT" or coords == "E":
-                return print("Quitting!")
+            if gamemode == "0" or (gamemode == "1" and self.currentPlayer[1] == "X"):
+                coords = self.getInput()
 
-            try: 
-                self.makeMove(coords)
-            except (IndexError, ValueError):
-                self.errors.append("Invalid coords!")
-                continue
-            except PositionInUse:
-                self.errors.append("Position Is already in use")
-                continue
-            
-            
+                if coords == "EXIT" or coords == "E":
+                    return self.run()
+
+                try:
+                    indexes = self.coordsToIndexex(coords)
+                    self.makeMove(indexes)
+                except (IndexError, ValueError):
+                    self.errors.append("Invalid coords!")
+                    continue
+                except PositionInUse: # Cleaner cause try block already used
+                    self.errors.append("Position Is already in use")
+                    continue
+
+            if gamemode == "1" and self.currentPlayer[1] == "O":
+                self.makeMove(self.compMove())
+
             # Check if win
-            if self.isWinner():
+            if self.isWinner(self.board, self.currentPlayer[1]):
+                self.addStats("win")
                 return self.done(f"{self.currentPlayer[0]} Won!")
 
-            # Check if tie ( put here so it doesen't have to run even if won )
-            else:
-                items = ""
-                for line in self.board:
-                    for item in line:
-                        items += item 
-
-                if not "#" in items:
-                    return self.done("Tie")
+            # Check if tie
+            if self.isBoardFull():
+                self.addStats("tie")
+                return self.done("Tie!")
 
             self.currentPlayer = self.getNextPlayer()
 
