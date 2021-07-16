@@ -138,10 +138,7 @@ class MainGame:
         if len(openEdges) > 0:
             return random.choice(openEdges)
 
-    """ Get User Input """
-    def getInput(self):
-        return input(f"{self.currentPlayer[0]} ({self.currentPlayer[1]}) > ").upper()
-
+    """ Adds Stats To Stats Object """
     def addStats(self, action: str):
         if action == "win":
             if self.currentPlayer[0] == "Player1":
@@ -162,7 +159,6 @@ class MainGame:
         else:
             self.run()
         
-
     """ Main Gameloop """
     def gameloop(self):
         self.clear()
@@ -181,11 +177,13 @@ class MainGame:
             "[2] Exit"
         ))
 
-        gamemode = input("Option > ")
-        if gamemode == "2":
-            return
-        if gamemode not in ["0", "1"]:
-            return print("Invalid option!")
+        while 1:
+            gamemode = input("Option > ")
+            if gamemode == "2":
+                return
+            if gamemode in ["0", "1"]:
+                break
+            print("Invalid option!")
 
         while 1:
             self.printBoard()
@@ -193,7 +191,7 @@ class MainGame:
             self.currentPlayer = self.startPlayer if not self.currentPlayer else self.currentPlayer
 
             if gamemode == "0" or (gamemode == "1" and self.currentPlayer[1] == "X"):
-                coords = self.getInput()
+                coords = input(f"{self.currentPlayer[0]} ({self.currentPlayer[1]}) > ").upper()
 
                 if coords == "EXIT" or coords == "E":
                     return self.run()
